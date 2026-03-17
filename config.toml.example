@@ -1,0 +1,22 @@
+upstream_url = "http://upstream:2096"
+bind_addr = "0.0.0.0:3020"
+
+# Each [[injections]] block defines one rule.
+# The proxy checks request headers against each rule in order — first match wins.
+# links_source can be a local file path OR an http(s):// URL.
+
+[[injections]]
+header = "User-Agent"
+contains = ["hiddify", "happ", "nekobox", "nekoray", "sing-box", "v2rayng"]
+links_source = "/data/hysteria2-links.txt"
+
+[[injections]]
+header = "User-Agent"
+contains = ["clash.meta", "mihomo"]
+links_source = "/data/clash-links.txt"
+
+# Example with a remote URL as source:
+# [[injections]]
+# header = "User-Agent"
+# contains = ["hiddify"]
+# links_source = "https://example.com/my-extra-links.txt"

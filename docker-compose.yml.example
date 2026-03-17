@@ -1,0 +1,9 @@
+services:
+  sub-injector:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3020:3020"
+    volumes:
+      - ./config.toml:/app/config.toml
+      - ./data:/data

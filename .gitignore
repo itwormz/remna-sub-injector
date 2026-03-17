@@ -1,0 +1,15 @@
+target/
+bin/
+
+# Local config (examples are committed, actual files are not)
+config.toml
+docker-compose.yml
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.iml
