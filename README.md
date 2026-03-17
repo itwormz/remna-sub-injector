@@ -1,6 +1,6 @@
 # remna-sub-injector
 
-A transparent HTTP reverse proxy that sits in front of a [Remnawave](https://remnawave.net) subscription server and injects extra proxy links into subscription responses for compatible VPN clients.
+**Remnawave Subscription Injector Proxy** — adds extra protocols (Hysteria2, TrustTunnel, SOCKS, MTProto, etc.) into a single [Remnawave](https://remnawave.net) subscription without modifying the upstream server.
 
 ## What it does
 
