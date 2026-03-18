@@ -1,6 +1,6 @@
 # remna-sub-injector
 
-**Remnawave Subscription Injector Proxy** — добавляет дополнительные протоколы (Hysteria2, TrustTunnel, SOCKS, MTProto и др.) в единую подписку [Remnawave](https://remnawave.net) без изменения upstream-сервера.
+**Remnawave Subscription Injector Proxy** — добавляет дополнительные протоколы (Hysteria2, TrustTunnel, SOCKS, MTProto и др.) в единую подписку [Remnawave](https://docs.rw) без изменения upstream-сервера.
 
 ## Что делает
 
