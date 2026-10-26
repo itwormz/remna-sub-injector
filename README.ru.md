@@ -37,7 +37,7 @@ git clone https://github.com/itwormz/remna-sub-injector /opt/remna-sub-injector
 cd /opt/remna-sub-injector
 ```
 
-**Шаг 2.** Используйте готовый образ `ghcr.io/itwormz/remna-sub-injector:0.1.1`. Docker автоматически выберет `linux/amd64` или `linux/arm64`. Скачивание бинарника и локальная сборка не нужны.
+**Шаг 2.** Используйте готовый образ [`ghcr.io/itwormz/remna-sub-injector:0.1.1`](https://github.com/itwormz/remna-sub-injector/pkgs/container/remna-sub-injector). Docker автоматически выберет `linux/amd64` или `linux/arm64`. Скачивание бинарника и локальная сборка не нужны.
 
 **Шаг 3.** Создайте конфиг:
 
@@ -62,8 +62,18 @@ cp config.toml.example config.toml
 
 **Шаг 5.** Создайте `docker-compose.yml`:
 
-```bash
-cp docker-compose.yml.example docker-compose.yml
+Укажите готовый образ из GHCR в `docker-compose.yml`:
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    ports:
+      - "3020:3020"
+    volumes:
+      - ./config.toml:/app/config.toml
+      - ./data:/data
 ```
 
 **Шаг 6.** Запустите:

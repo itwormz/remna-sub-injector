@@ -37,7 +37,7 @@ git clone https://github.com/itwormz/remna-sub-injector /opt/remna-sub-injector
 cd /opt/remna-sub-injector
 ```
 
-**Step 2.** Use the pre-built image `ghcr.io/itwormz/remna-sub-injector:0.1.1`. Docker automatically selects `linux/amd64` or `linux/arm64`. No binary download or local build is required.
+**Step 2.** Use the pre-built image [`ghcr.io/itwormz/remna-sub-injector:0.1.1`](https://github.com/itwormz/remna-sub-injector/pkgs/container/remna-sub-injector). Docker automatically selects `linux/amd64` or `linux/arm64`. No binary download or local build is required.
 
 **Step 3.** Create the config:
 
@@ -62,8 +62,18 @@ See [Links source format](#links-source-format) for details.
 
 **Step 5.** Create `docker-compose.yml`:
 
-```bash
-cp docker-compose.yml.example docker-compose.yml
+Reference the pre-built GHCR image in `docker-compose.yml`:
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    ports:
+      - "3020:3020"
+    volumes:
+      - ./config.toml:/app/config.toml
+      - ./data:/data
 ```
 
 **Step 6.** Start:
