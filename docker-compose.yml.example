@@ -3,7 +3,7 @@ services:
     image: ghcr.io/itwormz/remna-sub-injector:0.1.1
     restart: unless-stopped
     ports:
-      - "3020:3020"
+      - "127.0.0.1:3020:3020"
     volumes:
-      - ./config.toml:/app/config.toml
-      - ./data:/data
+      - ./config.toml:/app/config.toml:ro
+      - ./data:/data:ro

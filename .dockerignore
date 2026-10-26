@@ -3,3 +3,6 @@ target
 bin
 data
 config.toml
+.env
+.env.*
+docker-compose.yml
