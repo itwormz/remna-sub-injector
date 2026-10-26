@@ -37,20 +37,7 @@ git clone https://github.com/itwormz/remna-sub-injector /opt/remna-sub-injector
 cd /opt/remna-sub-injector
 ```
 
-**Step 2.** Download the binary into the `bin/` folder:
-
-```bash
-mkdir -p bin
-ARCH=$(uname -m)
-case $ARCH in
-  x86_64)  BINARY="sub-injector-linux-x86_64" ;;
-  aarch64) BINARY="sub-injector-linux-aarch64" ;;
-  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
-esac
-curl -L https://github.com/itwormz/remna-sub-injector/releases/latest/download/${BINARY} \
-  -o bin/sub-injector
-chmod +x bin/sub-injector
-```
+**Step 2.** Use the pre-built image `ghcr.io/itwormz/remna-sub-injector:0.1.1`. Docker automatically selects `linux/amd64` or `linux/arm64`. No binary download or local build is required.
 
 **Step 3.** Create the config:
 
@@ -84,6 +71,17 @@ cp docker-compose.yml.example docker-compose.yml
 ```bash
 docker compose up -d
 ```
+
+### Docker updates and rollback
+
+Change the `image:` tag in `docker-compose.yml` to the desired version, then run:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+To roll back, select the previous published version and repeat these commands. Use a specific version tag instead of `latest` to control upgrades.
 
 ### Option 2 — Binary + systemd
 

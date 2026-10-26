@@ -1,6 +1,6 @@
 services:
   sub-injector:
-    build: .
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
     restart: unless-stopped
     ports:
       - "3020:3020"

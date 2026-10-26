@@ -37,20 +37,7 @@ git clone https://github.com/itwormz/remna-sub-injector /opt/remna-sub-injector
 cd /opt/remna-sub-injector
 ```
 
-**Шаг 2.** Скачайте бинарник в папку `bin/`:
-
-```bash
-mkdir -p bin
-ARCH=$(uname -m)
-case $ARCH in
-  x86_64)  BINARY="sub-injector-linux-x86_64" ;;
-  aarch64) BINARY="sub-injector-linux-aarch64" ;;
-  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
-esac
-curl -L https://github.com/itwormz/remna-sub-injector/releases/latest/download/${BINARY} \
-  -o bin/sub-injector
-chmod +x bin/sub-injector
-```
+**Шаг 2.** Используйте готовый образ `ghcr.io/itwormz/remna-sub-injector:0.1.1`. Docker автоматически выберет `linux/amd64` или `linux/arm64`. Скачивание бинарника и локальная сборка не нужны.
 
 **Шаг 3.** Создайте конфиг:
 
@@ -84,6 +71,17 @@ cp docker-compose.yml.example docker-compose.yml
 ```bash
 docker compose up -d
 ```
+
+### Обновление и откат Docker
+
+Измените тег `image:` в `docker-compose.yml` на нужную версию, затем выполните:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Для отката укажите предыдущую опубликованную версию и повторите команды. Используйте конкретный тег версии вместо `latest`, чтобы контролировать обновления.
 
 ### Вариант 2 — Бинарный файл + systemd
 
