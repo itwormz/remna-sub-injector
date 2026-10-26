@@ -1,5 +1,11 @@
 # remna-sub-injector
 
+[🇬🇧 English](README.md) · **🇷🇺 Русский**
+
+[![Release](https://img.shields.io/github/v/release/itwormz/remna-sub-injector?style=for-the-badge&logo=github&label=Release&color=2563eb)](https://github.com/itwormz/remna-sub-injector/releases/latest)
+[![GHCR](https://img.shields.io/badge/GHCR-AMD64%20%7C%20ARM64-0f766e?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/itwormz/remna-sub-injector/pkgs/container/remna-sub-injector)
+[![License: MIT](https://img.shields.io/badge/License-MIT-64748b?style=for-the-badge)](LICENSE)
+
 **Remnawave Subscription Injector Proxy** — добавляет дополнительные протоколы (Hysteria2, TrustTunnel, SOCKS, MTProto и др.) в единую подписку [Remnawave](https://docs.rw) без изменения upstream-сервера.
 
 ## Что делает
@@ -30,11 +36,13 @@
 
 ### Вариант 1 — Docker Compose (рекомендуется)
 
-**Шаг 1.** Склонируйте репозиторий:
+**Шаг 1.** Создайте рабочую папку и скачайте пример конфигурации:
 
 ```bash
-git clone https://github.com/itwormz/remna-sub-injector /opt/remna-sub-injector
+mkdir -p /opt/remna-sub-injector
 cd /opt/remna-sub-injector
+curl -fsSL https://github.com/itwormz/remna-sub-injector/releases/download/v0.1.1/config.toml.example \
+  -o config.toml.example
 ```
 
 **Шаг 2.** Используйте готовый образ [`ghcr.io/itwormz/remna-sub-injector:0.1.1`](https://github.com/itwormz/remna-sub-injector/pkgs/container/remna-sub-injector). Docker автоматически выберет `linux/amd64` или `linux/arm64`. Скачивание бинарника и локальная сборка не нужны.
@@ -70,11 +78,13 @@ services:
     image: ghcr.io/itwormz/remna-sub-injector:0.1.1
     restart: unless-stopped
     ports:
-      - "3020:3020"
+      - "127.0.0.1:3020:3020"
     volumes:
-      - ./config.toml:/app/config.toml
-      - ./data:/data
+      - ./config.toml:/app/config.toml:ro
+      - ./data:/data:ro
 ```
+
+Порт доступен только с самого хоста — например, для reverse proxy. Если reverse proxy работает в другом контейнере, подключите оба сервиса к общей Docker-сети и используйте `http://sub-injector:3020`; в этом случае `ports` можно убрать. В `upstream_url` укажите доступный из контейнера адрес сервера подписок: `localhost` означает сам контейнер инжектора.
 
 **Шаг 6.** Запустите:
 
@@ -95,7 +105,7 @@ docker compose up -d
 
 ### Вариант 2 — Бинарный файл + systemd
 
-Готовые бинарники публикуются в [GitHub Releases](../../releases):
+Готовые бинарники публикуются в [GitHub Releases](https://github.com/itwormz/remna-sub-injector/releases):
 
 | Файл | Архитектура |
 |---|---|
@@ -116,7 +126,7 @@ curl -L https://github.com/itwormz/remna-sub-injector/releases/latest/download/$
 chmod +x /usr/local/bin/sub-injector
 ```
 
-Чтобы установить конкретную версию, замените `latest/download` на `download/v0.1.0` в URL.
+Чтобы установить конкретную версию, замените `latest/download` на `download/v0.1.1` в URL.
 
 **Шаг 2.** Создайте конфиг:
 
@@ -164,81 +174,48 @@ journalctl -u sub-injector -f
 
 ## Конфигурация
 
-Инжектор читает конфиг из TOML-файла. По умолчанию ищет `config.toml` в рабочей директории. Путь можно переопределить через переменную окружения `CONFIG_FILE`.
+### Файл конфигурации и окружение
 
-### Переменные окружения в версии 0.1.1
+В версии `0.1.1` настройки задаются в TOML-файле. Единственная переменная окружения приложения — `CONFIG_FILE`: она указывает **путь к файлу**, а не его содержимое.
 
-| Переменная | Значение | По умолчанию |
-|---|---|---|
-| `CONFIG_FILE` | Путь к существующему TOML-файлу **внутри контейнера** | `config.toml` относительно рабочей директории; в образе это `/app/config.toml` |
+| Запуск | Путь по умолчанию |
+|---|---|
+| Контейнер GHCR | `/app/config.toml` |
+| Бинарный файл | `config.toml` в рабочей директории |
 
-`CONFIG_FILE` принимает путь, а не содержимое конфига. Переменные `UPSTREAM_URL`, `PORT`, `EXTRA_LINKS_FILE` и `CONFIG_TOML` приложение напрямую не читает. Параметры `upstream_url`, `bind_addr` и правила `injections` задаются в TOML.
-
-### Вариант A — файл и CONFIG_FILE
-
-Сохраните настройки в `./config.toml` на хосте. Пример Compose с произвольным путём внутри контейнера:
+Чтобы выбрать другой путь в контейнере, согласуйте переменную и монтирование:
 
 ```yaml
-services:
-  sub-injector:
-    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
-    restart: unless-stopped
-    environment:
-      CONFIG_FILE: /etc/sub-injector/config.toml
-    ports:
-      - "127.0.0.1:3020:3020"
-    volumes:
-      - ./config.toml:/etc/sub-injector/config.toml:ro
-      - ./data:/data:ro
+environment:
+  CONFIG_FILE: /etc/sub-injector/config.toml
+volumes:
+  - ./config.toml:/etc/sub-injector/config.toml:ro
+  - ./data:/data:ro
 ```
 
-Здесь `./config.toml` — файл на хосте, `/etc/sub-injector/config.toml` — его путь в контейнере. `:ro` разрешает приложению только чтение. Файл должен существовать до запуска и быть доступен для чтения пользователю `app`, от которого работает образ. `links_source = "/data/hysteria2-links.txt"` означает файл `./data/hysteria2-links.txt` на хосте.
+Это фрагмент настроек сервиса `sub-injector` из примера выше. Файл `./config.toml` должен существовать на хосте и быть доступен для чтения пользователю `app` внутри контейнера. Путь `links_source = "/data/hysteria2-links.txt"` соответствует файлу `./data/hysteria2-links.txt` на хосте.
 
-`127.0.0.1:3020:3020` публикует порт только на самом хосте, например для reverse proxy. Если reverse proxy — соседний контейнер, подключите оба сервиса к общей Docker-сети и обращайтесь к `http://sub-injector:3020`; публикацию `ports` тогда можно убрать. `localhost` в `upstream_url` относится к самому контейнеру инжектора: для соседнего сервиса укажите его имя в общей сети.
+Параметры `upstream_url`, `bind_addr` и `injections` читаются из TOML. Передача их отдельными env-переменными или передача всего TOML через env не поддерживается. Подстановка `${NAME}` внутри TOML также не выполняется. Файл `.env` может использоваться самим Docker Compose, но не заменяет конфиг приложения.
 
-### Вариант B — весь TOML через env без монтирования конфига
+### Применение изменений
 
-В образе 0.1.1 это можно сделать через стартовую shell-команду. Она записывает многострочную переменную `CONFIG_TOML` во временный файл, затем запускает приложение с `CONFIG_FILE`. Это пример настройки Compose, а не встроенная поддержка `CONFIG_TOML` приложением.
+Конфиг читается при старте. После редактирования TOML перезапустите сервис:
 
-```yaml
-services:
-  sub-injector:
-    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
-    restart: unless-stopped
-    environment:
-      CONFIG_FILE: /tmp/sub-injector.toml
-      CONFIG_TOML: |
-        upstream_url = "https://subscriptions.example.com"
-        bind_addr = "0.0.0.0:3020"
-
-        [[injections]]
-        header = "User-Agent"
-        contains = ["hiddify", "happ"]
-        links_source = "https://example.com/extra-links.txt"
-    entrypoint: ["/bin/sh"]
-    command:
-      - -ec
-      - |
-        umask 077
-        printf '%s\n' "$$CONFIG_TOML" > "$$CONFIG_FILE"
-        exec /app/sub-injector
-    ports:
-      - "127.0.0.1:3020:3020"
+```bash
+docker compose restart sub-injector
 ```
 
-Замените оба URL на свои. В примере дополнительные ссылки берутся по HTTPS, поэтому volume `/data` не нужен. Для локального `links_source` добавьте монтирование `./data:/data:ro` из варианта A. `/tmp` должен оставаться доступным для записи; при `read_only: true` добавьте `tmpfs: ["/tmp"]`.
+После изменения пути `CONFIG_FILE` или монтирований пересоздайте контейнер:
 
-`$$` сохраняет знак `$` при обработке Compose: переменные подставляет shell уже внутри контейнера. `exec` передаёт процессу приложения сигналы остановки. Содержимое env видно пользователям с доступом к инспектированию контейнера; для конфигурации с секретами используйте файл с ограниченным доступом.
+```bash
+docker compose up -d --force-recreate sub-injector
+```
 
-### .env, подстановка значений и применение изменений
+Отсутствующий или некорректный TOML приводит к завершению приложения. Посмотреть ошибку:
 
-- `.env` используется Docker Compose для подстановки `${NAME}` в Compose-файл. Само наличие `.env` не передаёт все его значения приложению: используйте `environment` или `env_file`.
-- Даже переданный через `env_file` параметр `UPSTREAM_URL` не изменит настройки программы: версия 0.1.1 читает их из TOML. Для варианта B нужно передать `CONFIG_TOML` и сохранить стартовую команду из примера.
-- Подстановка `${NAME}` **внутри примонтированного TOML-файла не выполняется**. Например, `upstream_url = "${UPSTREAM_URL}"` не превращается автоматически в адрес из env. Подстановка Compose работает в YAML, в том числе в многострочном `CONFIG_TOML` варианта B. Для буквального `$` в YAML используйте `$$`.
-- Основной TOML читается при старте. После изменения примонтированного файла выполните `docker compose restart sub-injector`. После изменения `environment`, `env_file` или Compose выполните `docker compose up -d --force-recreate sub-injector`.
-- Отсутствующий или некорректный TOML приводит к завершению приложения; ошибку можно посмотреть через `docker compose logs --tail=100 sub-injector`.
-
-Перед запуском проверьте синтаксис Compose: `docker compose config --quiet`. Эта команда проверяет Compose, но не схему TOML и не доступность upstream. Подробнее: [переменные Compose](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) и [экранирование $$](https://docs.docker.com/reference/compose-file/interpolation/).
+```bash
+docker compose logs --tail=100 sub-injector
+```
 
 ### Справочник по параметрам
 
@@ -296,7 +273,7 @@ ss://base64encodedinfo@9.10.11.12:8388#Мой-Узел-3
 Нативный бинарник (x86_64):
 
 ```bash
-cargo build --release
+cargo build --release --locked
 ```
 
 ARM64 musl (для Alpine / серверов на aarch64):
@@ -310,7 +287,11 @@ cargo install cross
 Затем выполните сборку:
 
 ```bash
-cross build --release --target aarch64-unknown-linux-musl
+cross build --release --locked --target aarch64-unknown-linux-musl
 ```
 
 Результат: `target/aarch64-unknown-linux-musl/release/sub-injector`
+
+## Сборка и выпуск релизов
+
+CI собирает по одному релизному бинарнику для Linux AMD64 и ARM64. Эти же бинарники публикуются для systemd и упаковываются в образы GHCR; Dockerfile содержит только упаковку, без компиляции Rust. Порядок выпуска и предлагаемые настройки защиты описаны в [руководстве для сопровождающих](.github/RELEASING.md).

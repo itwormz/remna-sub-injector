@@ -13,3 +13,7 @@ docker-compose.yml
 .idea/
 .vscode/
 *.iml
+
+# Local subscription links and build output
+data/
+dist/
