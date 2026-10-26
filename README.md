@@ -166,6 +166,80 @@ journalctl -u sub-injector -f
 
 The injector reads a TOML config file. By default it looks for `config.toml` in the working directory. Override with the `CONFIG_FILE` environment variable.
 
+### Environment variables in version 0.1.1
+
+| Variable | Value | Default |
+|---|---|---|
+| `CONFIG_FILE` | Path to an existing TOML file **inside the container** | `config.toml` relative to the working directory; `/app/config.toml` in the image |
+
+`CONFIG_FILE` accepts a path, not TOML content. The application does not directly read `UPSTREAM_URL`, `PORT`, `EXTRA_LINKS_FILE`, or `CONFIG_TOML`. Set `upstream_url`, `bind_addr`, and `injections` in TOML.
+
+### Option A — mounted file and CONFIG_FILE
+
+Save your settings to `./config.toml` on the host. This Compose example selects a custom path inside the container:
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    environment:
+      CONFIG_FILE: /etc/sub-injector/config.toml
+    ports:
+      - "127.0.0.1:3020:3020"
+    volumes:
+      - ./config.toml:/etc/sub-injector/config.toml:ro
+      - ./data:/data:ro
+```
+
+`./config.toml` is the host file; `/etc/sub-injector/config.toml` is its container path. `:ro` allows read-only access. Create the file before starting and ensure it is readable by the image's `app` user. A `links_source` of `/data/hysteria2-links.txt` refers to `./data/hysteria2-links.txt` on the host.
+
+The port binding exposes the service only on the host's loopback interface, for example for a reverse proxy. For a reverse proxy running in another container, connect both services to a shared Docker network, use `http://sub-injector:3020`, and omit `ports`. In `upstream_url`, `localhost` refers to the injector container itself; use the upstream service name on a shared network to reach another container.
+
+### Option B — full TOML through env without a config mount
+
+With image 0.1.1, a startup shell command can write a multiline `CONFIG_TOML` variable to a temporary file, then start the application using `CONFIG_FILE`. This is a Compose setup example, not native `CONFIG_TOML` support in the application.
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    environment:
+      CONFIG_FILE: /tmp/sub-injector.toml
+      CONFIG_TOML: |
+        upstream_url = "https://subscriptions.example.com"
+        bind_addr = "0.0.0.0:3020"
+
+        [[injections]]
+        header = "User-Agent"
+        contains = ["hiddify", "happ"]
+        links_source = "https://example.com/extra-links.txt"
+    entrypoint: ["/bin/sh"]
+    command:
+      - -ec
+      - |
+        umask 077
+        printf '%s\n' "$$CONFIG_TOML" > "$$CONFIG_FILE"
+        exec /app/sub-injector
+    ports:
+      - "127.0.0.1:3020:3020"
+```
+
+Replace both URLs with your own. This example fetches extra links over HTTPS, so no `/data` mount is needed. For a local `links_source`, add `./data:/data:ro` from option A. `/tmp` must remain writable; with `read_only: true`, add `tmpfs: ["/tmp"]`.
+
+`$$` preserves a literal `$` through Compose processing, allowing the container's shell to expand the variables. `exec` passes shutdown signals to the application process. Environment content is visible to users who can inspect the container; use a file with restricted access for configuration containing secrets.
+
+### .env, interpolation, and applying changes
+
+- Docker Compose uses `.env` to interpolate `${NAME}` in the Compose file. Merely creating `.env` does not pass all its values into the application; use `environment` or `env_file`.
+- Passing `UPSTREAM_URL` through `env_file` still does not configure the application: version 0.1.1 reads settings from TOML. Option B requires `CONFIG_TOML` and the startup command shown above.
+- A mounted TOML file does **not** expand `${NAME}`. For example, `upstream_url = "${UPSTREAM_URL}"` is not automatically replaced with an env value. Compose interpolation applies to YAML, including option B's multiline `CONFIG_TOML`. Use `$$` for a literal `$` in YAML.
+- The main TOML configuration is read at startup. After editing the mounted file, run `docker compose restart sub-injector`. After changing `environment`, `env_file`, or Compose, run `docker compose up -d --force-recreate sub-injector`.
+- A missing or invalid TOML file terminates the application. Inspect errors with `docker compose logs --tail=100 sub-injector`.
+
+Before starting, validate Compose syntax using `docker compose config --quiet`. This validates Compose, not the TOML schema or upstream availability. See [Compose variables](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) and [escaping $$](https://docs.docker.com/reference/compose-file/interpolation/).
+
 ### Config reference
 
 | Key | Type | Required | Default | Description |

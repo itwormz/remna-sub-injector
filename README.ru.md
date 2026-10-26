@@ -166,6 +166,80 @@ journalctl -u sub-injector -f
 
 Инжектор читает конфиг из TOML-файла. По умолчанию ищет `config.toml` в рабочей директории. Путь можно переопределить через переменную окружения `CONFIG_FILE`.
 
+### Переменные окружения в версии 0.1.1
+
+| Переменная | Значение | По умолчанию |
+|---|---|---|
+| `CONFIG_FILE` | Путь к существующему TOML-файлу **внутри контейнера** | `config.toml` относительно рабочей директории; в образе это `/app/config.toml` |
+
+`CONFIG_FILE` принимает путь, а не содержимое конфига. Переменные `UPSTREAM_URL`, `PORT`, `EXTRA_LINKS_FILE` и `CONFIG_TOML` приложение напрямую не читает. Параметры `upstream_url`, `bind_addr` и правила `injections` задаются в TOML.
+
+### Вариант A — файл и CONFIG_FILE
+
+Сохраните настройки в `./config.toml` на хосте. Пример Compose с произвольным путём внутри контейнера:
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    environment:
+      CONFIG_FILE: /etc/sub-injector/config.toml
+    ports:
+      - "127.0.0.1:3020:3020"
+    volumes:
+      - ./config.toml:/etc/sub-injector/config.toml:ro
+      - ./data:/data:ro
+```
+
+Здесь `./config.toml` — файл на хосте, `/etc/sub-injector/config.toml` — его путь в контейнере. `:ro` разрешает приложению только чтение. Файл должен существовать до запуска и быть доступен для чтения пользователю `app`, от которого работает образ. `links_source = "/data/hysteria2-links.txt"` означает файл `./data/hysteria2-links.txt` на хосте.
+
+`127.0.0.1:3020:3020` публикует порт только на самом хосте, например для reverse proxy. Если reverse proxy — соседний контейнер, подключите оба сервиса к общей Docker-сети и обращайтесь к `http://sub-injector:3020`; публикацию `ports` тогда можно убрать. `localhost` в `upstream_url` относится к самому контейнеру инжектора: для соседнего сервиса укажите его имя в общей сети.
+
+### Вариант B — весь TOML через env без монтирования конфига
+
+В образе 0.1.1 это можно сделать через стартовую shell-команду. Она записывает многострочную переменную `CONFIG_TOML` во временный файл, затем запускает приложение с `CONFIG_FILE`. Это пример настройки Compose, а не встроенная поддержка `CONFIG_TOML` приложением.
+
+```yaml
+services:
+  sub-injector:
+    image: ghcr.io/itwormz/remna-sub-injector:0.1.1
+    restart: unless-stopped
+    environment:
+      CONFIG_FILE: /tmp/sub-injector.toml
+      CONFIG_TOML: |
+        upstream_url = "https://subscriptions.example.com"
+        bind_addr = "0.0.0.0:3020"
+
+        [[injections]]
+        header = "User-Agent"
+        contains = ["hiddify", "happ"]
+        links_source = "https://example.com/extra-links.txt"
+    entrypoint: ["/bin/sh"]
+    command:
+      - -ec
+      - |
+        umask 077
+        printf '%s\n' "$$CONFIG_TOML" > "$$CONFIG_FILE"
+        exec /app/sub-injector
+    ports:
+      - "127.0.0.1:3020:3020"
+```
+
+Замените оба URL на свои. В примере дополнительные ссылки берутся по HTTPS, поэтому volume `/data` не нужен. Для локального `links_source` добавьте монтирование `./data:/data:ro` из варианта A. `/tmp` должен оставаться доступным для записи; при `read_only: true` добавьте `tmpfs: ["/tmp"]`.
+
+`$$` сохраняет знак `$` при обработке Compose: переменные подставляет shell уже внутри контейнера. `exec` передаёт процессу приложения сигналы остановки. Содержимое env видно пользователям с доступом к инспектированию контейнера; для конфигурации с секретами используйте файл с ограниченным доступом.
+
+### .env, подстановка значений и применение изменений
+
+- `.env` используется Docker Compose для подстановки `${NAME}` в Compose-файл. Само наличие `.env` не передаёт все его значения приложению: используйте `environment` или `env_file`.
+- Даже переданный через `env_file` параметр `UPSTREAM_URL` не изменит настройки программы: версия 0.1.1 читает их из TOML. Для варианта B нужно передать `CONFIG_TOML` и сохранить стартовую команду из примера.
+- Подстановка `${NAME}` **внутри примонтированного TOML-файла не выполняется**. Например, `upstream_url = "${UPSTREAM_URL}"` не превращается автоматически в адрес из env. Подстановка Compose работает в YAML, в том числе в многострочном `CONFIG_TOML` варианта B. Для буквального `$` в YAML используйте `$$`.
+- Основной TOML читается при старте. После изменения примонтированного файла выполните `docker compose restart sub-injector`. После изменения `environment`, `env_file` или Compose выполните `docker compose up -d --force-recreate sub-injector`.
+- Отсутствующий или некорректный TOML приводит к завершению приложения; ошибку можно посмотреть через `docker compose logs --tail=100 sub-injector`.
+
+Перед запуском проверьте синтаксис Compose: `docker compose config --quiet`. Эта команда проверяет Compose, но не схему TOML и не доступность upstream. Подробнее: [переменные Compose](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) и [экранирование $$](https://docs.docker.com/reference/compose-file/interpolation/).
+
 ### Справочник по параметрам
 
 | Ключ | Тип | Обязателен | По умолчанию | Описание |
