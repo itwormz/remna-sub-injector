@@ -1,5 +1,5 @@
 # Packaging only: CI supplies the tested release binary for this architecture.
-FROM alpine:3.23
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates \
     && addgroup -S app && adduser -S app -G app
 LABEL org.opencontainers.image.source="https://github.com/itwormz/remna-sub-injector"
